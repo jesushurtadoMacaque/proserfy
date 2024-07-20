@@ -1,9 +1,19 @@
 from fastapi import FastAPI
 import models.user as models
 from config.database import engine, init_db
+from fastapi.middleware.cors import CORSMiddleware
 from routes import users
 import os
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 
 init_db()
 
