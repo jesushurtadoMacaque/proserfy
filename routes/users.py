@@ -33,18 +33,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 # ------ Routes ------
 @router.post("/register", tags=["users"], response_model=Token, status_code=status.HTTP_201_CREATED)
-async def create_users(user: UserCreate, db: Session):
+async def create_users(user: UserCreate, db: db_dependency):
+    hashed_password = hash_password(user.password)
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     # Verificar si el rol especificado existe
     role = db.query(Role).filter(Role.id == user.role_id).first()
     if not role:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role does not exist")
-    
-    # Verificar si el correo electrónico ya está en uso
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-
-    hashed_password = hash_password(user.password)
 
     db_user = User(
         email=user.email,
