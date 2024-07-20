@@ -35,6 +35,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 @router.post("/register", tags=["users"], response_model=Token, status_code=status.HTTP_201_CREATED)
 async def create_users(user: UserCreate, db: db_dependency):
     hashed_password = hash_password(user.password)
+    
+    # Verificar si el rol especificado existe
+    role = db.query(Role).filter(Role.id == user.role_id).first()
+    if not role:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role does not exist")
+
     db_user = User(
         email=user.email,
         first_name=user.first_name,
@@ -115,4 +121,3 @@ async def suspend_user(db: db_dependency, request: SuspendUserRequest, current_u
     user.is_active = request.is_active
     db.commit()
     return user
-
