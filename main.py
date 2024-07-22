@@ -1,10 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from custom_exceptions.users_esceptions import GenericException
 import models.user as models
 from config.database import engine, init_db
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from routes import users
 import uvicorn
 import os
+
+
+load_dotenv()
 app = FastAPI()
 
 app.add_middleware(
@@ -15,6 +22,13 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
+@app.exception_handler(GenericException)
+async def item_not_found_exception_handler(request: Request, exc: GenericException):
+    return JSONResponse(
+        status_code=exc.code,
+        content={"error": f"{exc.message}"},
+    )
 
 init_db()
 
