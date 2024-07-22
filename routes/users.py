@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from models.user import User, Role
 from schemas.user_schema import RoleResponse, UserCreate, UserResponse, LoginForm, ChangeRoleRequest, SuspendUserRequest
@@ -6,6 +7,8 @@ from schemas.token_schema import Token
 from config.database import SessionLocal
 from typing import Annotated, List
 from sqlalchemy.orm import Session
+from utils.getters_handler import get_role_by_id, get_user_by_email, get_user_by_id
+from utils.google_handlers import fetch_google_tokens, get_google_auth_url, verify_google_id_token
 from utils.jwt_handler import create_access_token, verify_token
 from passlib.context import CryptContext
 from utils.password_handler import verify_password, hash_password
@@ -34,92 +37,105 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 # ------ Routes ------
 @router.post("/register", tags=["users"], response_model=Token, status_code=status.HTTP_201_CREATED)
 async def create_users(user: UserCreate, db: db_dependency):
-    hashed_password = hash_password(user.password)
-    existing_user = db.query(User).filter(User.email == user.email).first()
-    if existing_user:
+    if get_user_by_email(db, user.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-    # Verificar si el rol especificado existe
-    role = db.query(Role).filter(Role.id == user.role_id).first()
-    if not role:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role does not exist")
+
+    role = get_role_by_id(db, user.role_id)
 
     db_user = User(
         email=user.email,
         first_name=user.first_name,
         last_name=user.last_name,
-        hashed_password=hashed_password,
+        hashed_password=hash_password(user.password),
         receive_promotions=user.receive_promotions,
-        role_id=user.role_id
+        role_id=role.id
     )
-
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
 
     access_token = create_access_token(data={"sub": db_user.email})
-
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", tags=["users"], response_model=Token)
 async def login_for_access_token(db: db_dependency, form_data: LoginForm):
-    user = db.query(User).filter(User.email == form_data.email).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    user = get_user_by_email(db, form_data.email)
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={"WWW-Authenticate": "Bearer"}
         )
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users/{id}", tags=["users"], response_model=UserResponse)
 async def read_user(id: int, db: db_dependency):
-    user = db.query(User).filter(User.id == id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not exist",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user = get_user_by_id(db, id)
     return user
 
-# Roles management
 @router.get("/roles", tags=["roles"], response_model=List[RoleResponse])
 async def get_roles(db: db_dependency):
-    roles = db.query(Role).all()
-    return roles
+    return db.query(Role).all()
 
 @router.put("/users/change_role", tags=["users"], response_model=UserResponse)
 async def change_user_role(db: db_dependency, request: ChangeRoleRequest, current_user: str = Depends(get_current_user)):
-    user = db.query(User).filter(User.email == current_user).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not exist",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    new_role = db.query(Role).filter(Role.id == request.role_id).first()
-    if not new_role:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role specified",
-        )
-
+    user = get_user_by_email(db, current_user)
+    new_role = get_role_by_id(db, request.role_id)
     user.role = new_role
     db.commit()
     return user
 
 @router.put("/users/suspend", tags=["users"], response_model=UserResponse)
 async def suspend_user(db: db_dependency, request: SuspendUserRequest, current_user: str = Depends(get_current_user)):
-    user = db.query(User).filter(User.email == current_user).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not exist",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+    user = get_user_by_email(db, current_user)
     user.is_active = request.is_active
     db.commit()
     return user
+
+# Google auth
+@router.get("/login/google", tags=["users"])
+async def google_login():
+    auth_url = get_google_auth_url()
+    return RedirectResponse(url=auth_url)
+
+@router.get("/auth", tags=["users"], response_model=Token)
+async def auth_callback(request: Request, db: db_dependency):
+    code = request.query_params.get("code")
+    if not code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code not provided")
+
+    token_response_data = fetch_google_tokens(code)
+    
+    if "error" in token_response_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=token_response_data["error"])
+
+    id_token_str = token_response_data.get("id_token")
+    if not id_token_str:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="ID token not provided")
+
+    id_info = verify_google_id_token(id_token_str)
+    user_email = id_info["email"]
+    google_id = id_info["sub"]
+
+    user = get_user_by_email(db, user_email)
+    if not user:
+        user = User(
+            email=user_email,
+            first_name=id_info.get("given_name", ""),
+            last_name=id_info.get("family_name", ""),
+            is_active=True,
+            google_id=google_id,
+            role_id=1  # Asigna un rol predeterminado, por ejemplo "Usuario"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        if user.google_id != google_id:
+            user.google_id = google_id
+            db.commit()
+            db.refresh(user)
+
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}

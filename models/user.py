@@ -8,7 +8,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
-    email = Column(String(50), unique=True, nullable=False)
+    email = Column(String(50), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=True)
     receive_promotions = Column(Boolean, default=False)
     apple_id = Column(String(255), unique=True, nullable=True)
