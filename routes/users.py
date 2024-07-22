@@ -60,12 +60,21 @@ async def create_users(user: UserCreate, db: db_dependency):
 @router.post("/login", tags=["users"], response_model=Token)
 async def login_for_access_token(db: db_dependency, form_data: LoginForm):
     user = get_user_by_email(db, form_data.email)
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
