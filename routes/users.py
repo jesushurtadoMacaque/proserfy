@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
-from custom_exceptions.users_esceptions import GenericException
+from custom_exceptions.users_exceptions import GenericException
 from models.user import User, Role
 from schemas.user_schema import RoleResponse, UserCreate, UserResponse, LoginForm, ChangeRoleRequest, SuspendUserRequest
 from schemas.token_schema import Token
@@ -62,10 +62,8 @@ async def create_users(user: UserCreate, db: db_dependency):
 @router.post("/login", tags=["users"], response_model=Token)
 async def login_for_access_token(db: db_dependency, form_data: LoginForm):
     user = get_user_by_email(db, form_data.email)
-    if not user.hashed_password:
-        raise GenericException(message="Incorrect email or password", code=status.HTTP_401_UNAUTHORIZED)
     
-    if not verify_password(form_data.password, user.hashed_password):
+    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise GenericException(message="Incorrect email or password", code=status.HTTP_401_UNAUTHORIZED)
 
     elif not user.is_active:
@@ -106,7 +104,7 @@ async def suspend_user(db: db_dependency, request: SuspendUserRequest, current_u
         db.commit()
         return user
     else :
-        raise GenericException(message="User not exists", code=HTTP_404_NOT_FOUND)
+        raise GenericException(message="User not exists", code=status.HTTP_404_NOT_FOUND)
 
 
 # Google auth

@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from utils.error_handler import generic_error_exception_handler, validation_exception_handler
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from custom_exceptions.users_esceptions import GenericException
+from custom_exceptions.users_exceptions import GenericException
 import models.user as models
 from config.database import engine, init_db
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,13 +22,8 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-
-@app.exception_handler(GenericException)
-async def item_not_found_exception_handler(request: Request, exc: GenericException):
-    return JSONResponse(
-        status_code=exc.code,
-        content={"error": f"{exc.message}"},
-    )
+app.add_exception_handler(GenericException, generic_error_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 init_db()
 
