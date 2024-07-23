@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import relationship
+from datetime import date
 from config.database import Base
 
 class User(Base):
@@ -9,12 +10,13 @@ class User(Base):
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     email = Column(String(50), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=True)
+    password = Column(String(255), nullable=True)
     receive_promotions = Column(Boolean, default=False)
     apple_id = Column(String(255), unique=True, nullable=True)
     facebook_id = Column(String(255), unique=True, nullable=True)
     google_id = Column(String(255), unique=True, nullable=True)
     is_active = Column(Boolean, default=True)
+    birth_date = Column(Date, nullable=True)  
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
 
     role = relationship('Role', back_populates='users')
