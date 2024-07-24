@@ -14,9 +14,52 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+DEFAULT_CATEGORIES = [
+    {
+        "name": "Health",
+        "subcategories": [
+            {"name": "Physical Therapy"},
+            {"name": "Nutrition"},
+            {"name": "Mental Health"}
+        ]
+    },
+    {
+        "name": "Education",
+        "subcategories": [
+            {"name": "Tutoring"},
+            {"name": "Language Lessons"},
+            {"name": "Test Preparation"}
+        ]
+    },
+    {
+        "name": "Home Services",
+        "subcategories": [
+            {"name": "Cleaning"},
+            {"name": "Plumbing"},
+            {"name": "Electrician"}
+        ]
+    },
+    {
+        "name": "Beauty",
+        "subcategories": [
+            {"name": "Hairdressing"},
+            {"name": "Makeup"},
+            {"name": "Nails"}
+        ]
+    },
+    {
+        "name": "Fitness",
+        "subcategories": [
+            {"name": "Personal Training"},
+            {"name": "Yoga"},
+            {"name": "Pilates"}
+        ]
+    }
+]
 
 def init_db():
     from models.user import Role
+    from models.professional_service import Category, SubCategory
     
     Base.metadata.create_all(bind=engine)
     
@@ -27,6 +70,27 @@ def init_db():
             professional_role = Role(name='professional')
             db.add(common_role)
             db.add(professional_role)
+            db.commit()
+        for category_data in DEFAULT_CATEGORIES:
+            category_name = category_data["name"]
+            subcategories = category_data["subcategories"]
+            
+            category = db.query(Category).filter(Category.name == category_name).first()
+            if not category:
+                category = Category(name=category_name)
+                db.add(category)
+                db.commit()
+                db.refresh(category)
+            
+            for subcategory_data in subcategories:
+                subcategory_name = subcategory_data["name"]
+                subcategory = db.query(SubCategory).filter(
+                    SubCategory.name == subcategory_name,
+                    SubCategory.category_id == category.id
+                ).first()
+                if not subcategory:
+                    subcategory = SubCategory(name=subcategory_name, category_id=category.id)
+                    db.add(subcategory)
             db.commit()
     finally:
         db.close()

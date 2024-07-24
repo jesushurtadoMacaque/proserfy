@@ -1,15 +1,18 @@
+from fastapi.staticfiles import StaticFiles
+import config.database
+import config.files
 from utils.error_handler import generic_error_exception_handler, validation_exception_handler
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from custom_exceptions.users_exceptions import GenericException
 import models.user as models
-from config.database import engine, init_db
+#from config.database import engine, init_db
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from routes import users
+from routes import users, professional_service
 import uvicorn
 import os
-
+import config
 
 load_dotenv()
 app = FastAPI()
@@ -25,11 +28,15 @@ app.add_middleware(
 app.add_exception_handler(GenericException, generic_error_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
-init_db()
+app.mount("/uploaded_images/services", StaticFiles(directory=config.files.UPLOAD_DIRECTORY), name="uploaded_images")
 
-models.Base.metadata.create_all(bind=engine)
 
-app.include_router(users.router)
+config.database.init_db()
+
+models.Base.metadata.create_all(bind=config.database.engine)
+
+app.include_router(users.router, prefix="/v1")
+app.include_router(professional_service.router, prefix="/v1")
 
 
 if __name__ == "__main__":

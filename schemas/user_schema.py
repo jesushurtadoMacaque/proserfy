@@ -9,7 +9,7 @@ class RoleResponse(RoleBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ChangeRoleRequest(BaseModel):
     role_id: int
@@ -57,14 +57,14 @@ class UserResponse(UserBase):
     role: RoleResponse
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LoginForm(BaseModel):
     email: EmailStr
     password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 #@field_validator("password")

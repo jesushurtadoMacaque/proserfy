@@ -106,7 +106,7 @@ async def read_user(id: int, db: db_dependency):
 async def get_roles(db: db_dependency):
     return db.query(Role).all()
 
-@router.put("/users/change_role", tags=["users"], response_model=UserResponse, responses=validation_error_response)
+@router.put("/users/change-role", tags=["users"], response_model=UserResponse, responses=validation_error_response)
 async def change_user_role(db: db_dependency, request: ChangeRoleRequest, current_user: str = Depends(get_current_user)):
     new_role = get_role_by_id(db, request.role_id)
     if new_role: 
@@ -140,8 +140,8 @@ async def refresh_access_token(refresh_token: RefreshToken):
         raise GenericException(message="Invalid refresh token", code=status.HTTP_401_UNAUTHORIZED)
 
     access_token = create_access_token(data={"sub": user_email})
-    refresh_token = create_refresh_token(data={"sub": user_email})
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+    
+    return {"access_token": access_token, "refresh_token": refresh_token.refresh_token, "token_type": "bearer"}
 
 @router.put("/user/change-password",tags=["users"], response_model=UserResponse, responses=validation_error_response)
 async def change_password(change_password_request:ChangePasswordRequest, db:db_dependency, current_user:str = Depends(get_current_user)):

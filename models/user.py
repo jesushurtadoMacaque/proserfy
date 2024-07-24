@@ -20,6 +20,9 @@ class User(Base):
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
 
     role = relationship('Role', back_populates='users')
+    professional_services = relationship('ProfessionalService', back_populates='professional')
+    comments = relationship('Comment', back_populates='user')
+    ratings = relationship('Rating', back_populates='user')
 
 class Role(Base):
     __tablename__ = "roles"
