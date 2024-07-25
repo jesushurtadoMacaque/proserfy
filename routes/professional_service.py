@@ -1,16 +1,20 @@
 import uuid
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
 from config.files import UPLOAD_DIRECTORY
 from custom_exceptions.users_exceptions import GenericException
 from models.professional_service import Comment, ProfessionalService, Rating, ServiceImage, SubCategory
 from models.user import User, Role
+from schemas.paginated_schema import PaginatedResponse
 from schemas.profesional_service_schema import CommentCreate, CommentResponse, ProfessionalServiceCreate, ProfessionalServiceResponse, RatingCreate, RatingResponse
 from config.database import SessionLocal
 from typing import Annotated, List
 from sqlalchemy.orm import Session
+from utils.distance_handler import calculate_distance
 from utils.error_handler import validation_error_response
+from utils.generate_url import build_pagination_urls
 from utils.getters_handler import get_user_by_email
 from utils.jwt_handler import verify_token
 from passlib.context import CryptContext
@@ -44,6 +48,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 @router.post("/professional-services", tags=["professional_services"], response_model=ProfessionalServiceResponse)
 async def create_professional_service(service: ProfessionalServiceCreate, db: db_dependency, current_user: str = Depends(get_current_user)):
     user = get_user_by_email(db, current_user)
+    if not user: 
+        raise GenericException(message="User not found", code=status.HTTP_404_NOT_FOUND)
     if user.role.name != "professional":
         raise GenericException(message="Not authorized to create services", code=status.HTTP_403_FORBIDDEN)
     
@@ -57,7 +63,7 @@ async def create_professional_service(service: ProfessionalServiceCreate, db: db
     db.refresh(db_service)
     return db_service
 
-@router.post("/upload-images/{service_id}")
+@router.post("/upload-images/{service_id}", tags=["professional_services"])
 async def upload_images(
     service_id: int, 
     db: db_dependency, 
@@ -119,9 +125,67 @@ async def upload_images(
     }
 
     return JSONResponse(content=response)
-@router.get("/professional-services", tags=["professional_services"], response_model=List[ProfessionalServiceResponse])
-async def get_professional_services(db: db_dependency):
-    return db.query(ProfessionalService).all()
+
+@router.get("/professional-services", tags=["professional_services"], response_model=PaginatedResponse)
+async def get_professional_services(
+    db: db_dependency, 
+    request: Request,
+    limit: int = Query(15), 
+    offset: int = Query(0), 
+):
+    query = db.query(ProfessionalService)
+    total = query.count()
+    services = query.limit(limit).offset(offset).all()
+    
+    total_pages = (total + limit - 1) // limit
+    
+    current_page_url, next_page_url, prev_page_url = build_pagination_urls(request, offset, limit, total)
+    
+    return PaginatedResponse(
+        total_items=total,
+        total_pages=total_pages,
+        current_page=current_page_url,
+        next_page=next_page_url,
+        prev_page=prev_page_url,
+        items=services
+    )
+    #return db.query(ProfessionalService).limit(limit).offset(offset).all()
+
+
+@router.get("/professional-services/filter", tags=["professional_services"], response_model=PaginatedResponse)
+def get_services(
+    db: db_dependency,
+    request: Request,
+    limit: int = Query(15), 
+    offset: int = Query(0),
+    lat: float = Query(...), 
+    lon: float = Query(...), 
+    range_km: float = Query(...), 
+    ):
+
+    query = db.query(ProfessionalService).filter(
+        text("ST_Distance_Sphere(point(longitude, latitude), point(:lon, :lat)) <= :range_km * 1000")
+    ).params(
+        lon=lon, lat=lat, range_km=range_km
+    )
+
+    total = query.count()
+
+    services = query.limit(limit).offset(offset).all()
+    total_pages = (total + limit - 1) // limit
+    
+    current_page_url, next_page_url, prev_page_url = build_pagination_urls(request, offset, limit, total)
+    
+
+    return PaginatedResponse(
+        total_items=total,
+        total_pages=total_pages,
+        current_page=current_page_url,
+        next_page=next_page_url,
+        prev_page=prev_page_url,
+        items=services
+    )
+
 
 @router.delete("/delete-image/{image_id}", tags=["professional_services"])
 async def delete_image(image_id: int, db: db_dependency, current_user: str = Depends(get_current_user)):
@@ -154,7 +218,7 @@ async def create_comment(comment: CommentCreate, db: db_dependency, current_user
     if not professional_service:
         raise GenericException(message="Service not found", code=status.HTTP_404_NOT_FOUND)
     
-    db_comment = Comment(**comment.dict(), user_id=user.id)
+    db_comment = Comment(**comment.model_dump(), user_id=user.id)
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
@@ -175,7 +239,7 @@ async def create_rating(rating: RatingCreate, db: db_dependency, current_user: s
     if existing_rating:
         raise GenericException(message="You have already rated this service", code=status.HTTP_400_BAD_REQUEST)
 
-    db_rating = Rating(**rating.dict(), user_id=user.id)
+    db_rating = Rating(**rating.model_dump(), user_id=user.id)
     db.add(db_rating)
     db.commit()
 
@@ -189,3 +253,4 @@ async def create_rating(rating: RatingCreate, db: db_dependency, current_user: s
     db.refresh(db_rating)
     return db_rating
 
+    

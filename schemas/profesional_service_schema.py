@@ -41,6 +41,8 @@ class ProfessionalServiceBase(BaseModel):
     name: str
     description: str
     location: str
+    latitude: float
+    longitude: float
     subcategory_id: int
 
 class ProfessionalServiceCreate(ProfessionalServiceBase):

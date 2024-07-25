@@ -35,8 +35,9 @@ class ProfessionalService(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(String(255), nullable=False)
-    #image_urls = Column(ARRAY(String), nullable=True)  
     location = Column(String(100), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False) 
     average_rating = Column(Float, default=0.0)
     professional_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     
