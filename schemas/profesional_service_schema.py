@@ -89,3 +89,8 @@ class RatingResponse(RatingBase):
 
     class Config:
         from_attributes = True
+
+class ImageUpdatedResponse(BaseModel):
+    detail: str
+    uploaded_files: List[str]
+    errors: List[str]

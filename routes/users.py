@@ -1,26 +1,20 @@
-from datetime import date
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, Cookie, Depends, Response, status, Request
 from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from custom_exceptions.users_exceptions import GenericException
 from models.user import User, Role
 from schemas.user_schema import ChangePasswordRequest, CompleteProfile, RoleResponse, UserCreate, UserResponse, LoginForm, ChangeRoleRequest, SuspendUserRequest, UserUpdate
-from schemas.token_schema import RefreshToken, Token
+from schemas.token_schema import Token
 from config.database import SessionLocal
 from typing import Annotated, List
 from sqlalchemy.orm import Session
 from utils.error_handler import validation_error_response
-from utils.getters_handler import get_role_by_id, get_user_by_email, get_user_by_id
+from utils.getters_handler import get_current_user, get_role_by_id, get_user_by_email, get_user_by_id
 from utils.google_handlers import fetch_google_tokens, get_google_auth_url, verify_google_id_token
 from utils.jwt_handler import create_access_token, create_refresh_token, verify_token
-from passlib.context import CryptContext
 from utils.password_handler import verify_password, hash_password
 
 router = APIRouter()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_db():
     db = SessionLocal()
@@ -31,16 +25,9 @@ def get_db():
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = verify_token(token)
-    user_email = payload.get("sub")
-    if user_email is None:
-        raise GenericException(message="Invalid authentication credentials", code=status.HTTP_401_UNAUTHORIZED)
-    return user_email
-
 # ------ Routes ------
 @router.post("/register", tags=["users"], response_model=Token, responses=validation_error_response,status_code=status.HTTP_201_CREATED)
-async def create_users(user: UserCreate, db: db_dependency):
+async def create_users(user: UserCreate, db: db_dependency, response: Response):
     if get_user_by_email(db, user.email):
         raise GenericException(message="Email already registered", code=status.HTTP_400_BAD_REQUEST)
 
@@ -57,7 +44,9 @@ async def create_users(user: UserCreate, db: db_dependency):
     access_token = create_access_token(data={"sub": db_user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
 
-    return {"access_token": access_token, "refresh_token": refresh_token,"token_type": "bearer"}
+    response.set_cookie(key="refresh_token", value=refresh_token)
+    
+    return {"access_token": access_token}
 
 @router.put("/users", tags=["users"], response_model=UserResponse, responses=validation_error_response)
 async def update_user(user_update: UserUpdate, db: db_dependency, current_user: str = Depends(get_current_user)):
@@ -129,19 +118,17 @@ async def suspend_user(db: db_dependency, request: SuspendUserRequest, current_u
         raise GenericException(message="User not exists", code=status.HTTP_404_NOT_FOUND)
 
 @router.post("/refresh", tags=["users"], response_model=Token, responses=validation_error_response)
-async def refresh_access_token(refresh_token: RefreshToken):
+async def refresh_access_token(refresh_token: str = Cookie(...)):
     try:
-        payload = verify_token(refresh_token.refresh_token)
+        payload = verify_token(refresh_token, "refresh")
         user_email = payload.get("sub")
-        if user_email is None:
-            raise GenericException(message="Invalid refresh token", code=status.HTTP_401_UNAUTHORIZED)
 
     except JWTError:
         raise GenericException(message="Invalid refresh token", code=status.HTTP_401_UNAUTHORIZED)
 
     access_token = create_access_token(data={"sub": user_email})
     
-    return {"access_token": access_token, "refresh_token": refresh_token.refresh_token, "token_type": "bearer"}
+    return {"access_token": access_token}
 
 @router.put("/user/change-password",tags=["users"], response_model=UserResponse, responses=validation_error_response)
 async def change_password(change_password_request:ChangePasswordRequest, db:db_dependency, current_user:str = Depends(get_current_user)):

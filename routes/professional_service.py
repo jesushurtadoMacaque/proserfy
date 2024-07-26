@@ -1,33 +1,22 @@
 import uuid
 from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
 from config.files import UPLOAD_DIRECTORY
 from custom_exceptions.users_exceptions import GenericException
 from models.professional_service import Comment, ProfessionalService, Rating, ServiceImage, SubCategory
-from models.user import User, Role
 from schemas.paginated_schema import PaginatedResponse
-from schemas.profesional_service_schema import CommentCreate, CommentResponse, ProfessionalServiceCreate, ProfessionalServiceResponse, RatingCreate, RatingResponse
+from schemas.profesional_service_schema import CommentCreate, CommentResponse, ImageUpdatedResponse, ProfessionalServiceCreate, ProfessionalServiceResponse, RatingCreate, RatingResponse
 from config.database import SessionLocal
 from typing import Annotated, List
 from sqlalchemy.orm import Session
-from utils.distance_handler import calculate_distance
-from utils.error_handler import validation_error_response
 from utils.generate_url import build_pagination_urls
-from utils.getters_handler import get_user_by_email
-from utils.jwt_handler import verify_token
-from passlib.context import CryptContext
+from utils.getters_handler import get_current_user, get_user_by_email
 from PIL import Image
 import aiofiles
 import os
 
-
-
 router = APIRouter()
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_db():
     db = SessionLocal()
@@ -37,13 +26,6 @@ def get_db():
         db.close()
 
 db_dependency = Annotated[Session, Depends(get_db)]
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = verify_token(token)
-    user_email = payload.get("sub")
-    if user_email is None:
-        raise GenericException(message="Invalid authentication credentials", code=status.HTTP_401_UNAUTHORIZED)
-    return user_email
 
 @router.post("/professional-services", tags=["professional_services"], response_model=ProfessionalServiceResponse)
 async def create_professional_service(service: ProfessionalServiceCreate, db: db_dependency, current_user: str = Depends(get_current_user)):
@@ -63,7 +45,7 @@ async def create_professional_service(service: ProfessionalServiceCreate, db: db
     db.refresh(db_service)
     return db_service
 
-@router.post("/upload-images/{service_id}", tags=["professional_services"])
+@router.post("/upload-images/{service_id}", tags=["professional_services"], response_model=ImageUpdatedResponse)
 async def upload_images(
     service_id: int, 
     db: db_dependency, 
@@ -73,8 +55,8 @@ async def upload_images(
     professional_service = db.query(ProfessionalService).filter(ProfessionalService.id == service_id).first()
     user = get_user_by_email(db, current_user)
 
-    if professional_service.professional_id != user.id:
-        raise GenericException(message="You are not the owner of this service", code=status.HTTP_401_UNAUTHORIZED)
+    if not professional_service or professional_service.professional_id != user.id:
+        raise GenericException(message="Error trying to update", code=status.HTTP_401_UNAUTHORIZED)
 
     existing_images_count = db.query(ServiceImage).filter(ServiceImage.service_id == service_id).count()
     if existing_images_count >= 10:
@@ -118,11 +100,11 @@ async def upload_images(
         
         uploaded_files.append(unique_filename)
 
-    response = {
-        "detail": "Images uploaded successfully",
-        "uploaded_files": uploaded_files,
-        "errors": error_messages
-    }
+    response = ImageUpdatedResponse(
+        detail= "Images uploaded successfully",
+        uploaded_files= uploaded_files,
+        errors = error_messages
+    )
 
     return JSONResponse(content=response)
 
@@ -152,7 +134,7 @@ async def get_professional_services(
     #return db.query(ProfessionalService).limit(limit).offset(offset).all()
 
 
-@router.get("/professional-services/filter", tags=["professional_services"], response_model=PaginatedResponse)
+@router.get("/professional-services/filter", name="Get services by location range" ,tags=["professional_services"], response_model=PaginatedResponse)
 def get_services(
     db: db_dependency,
     request: Request,
