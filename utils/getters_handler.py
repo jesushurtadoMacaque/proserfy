@@ -1,10 +1,10 @@
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
-
 from custom_exceptions.users_exceptions import GenericException
-from models.user import Role, User
+from models.users import User
+from models.roles import Role
 from utils.jwt_handler import verify_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

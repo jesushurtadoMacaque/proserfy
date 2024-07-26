@@ -15,7 +15,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     error_messages = []
 
     for error in errors:
-        field_name = error["loc"][-1]  # Tomamos solo el último elemento que es el nombre del campo
+        field_name = error["loc"][-1] # Last error
         error_message = f"{field_name}: {error['msg']}"
         error_messages.append(error_message)
     

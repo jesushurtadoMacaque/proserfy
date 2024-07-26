@@ -5,11 +5,10 @@ from utils.error_handler import generic_error_exception_handler, validation_exce
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from custom_exceptions.users_exceptions import GenericException
-import models.user as models
-#from config.database import engine, init_db
+import models.users as models
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from routes import users, professional_service
+from routes import user, professional_service
 import uvicorn
 import os
 import config
@@ -35,7 +34,7 @@ config.database.init_db()
 
 models.Base.metadata.create_all(bind=config.database.engine)
 
-app.include_router(users.router, prefix="/v1")
+app.include_router(user.router, prefix="/v1")
 app.include_router(professional_service.router, prefix="/v1")
 
 

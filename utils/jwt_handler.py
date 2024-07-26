@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from fastapi import status
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv

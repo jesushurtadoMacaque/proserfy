@@ -1,5 +1,4 @@
 from typing import Dict
-
 from fastapi import HTTPException, logger, status
 from config.social import GOOGLE_AUTH_ENDPOINT, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URL, GOOGLE_RESPONSE_TYPE, GOOGLE_SCOPE, GOOGLE_TOKEN_URL
 from google.oauth2 import id_token
@@ -7,6 +6,8 @@ from google.auth.transport import requests as google_requests
 import requests
 
 def get_google_auth_url() -> str:
+    print("GOOGLE_REDIRECT_URL")
+    print(GOOGLE_REDIRECT_URL)
     return (
         f"{GOOGLE_AUTH_ENDPOINT}?response_type={GOOGLE_RESPONSE_TYPE}&client_id={GOOGLE_CLIENT_ID}"
         f"&redirect_uri={GOOGLE_REDIRECT_URL}&scope={GOOGLE_SCOPE}&prompt=select_account"

@@ -1,7 +1,10 @@
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import relationship
-from datetime import date
 from config.database import Base
+from models.professional_services import ProfessionalService
+from models.roles import Role
+from models.comments import Comment
+from models.ratings import Rating
 
 class User(Base):
     __tablename__ = "users"
@@ -23,10 +26,3 @@ class User(Base):
     professional_services = relationship('ProfessionalService', back_populates='professional')
     comments = relationship('Comment', back_populates='user')
     ratings = relationship('Rating', back_populates='user')
-
-class Role(Base):
-    __tablename__ = "roles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False)
-    users = relationship('User', back_populates='role')
