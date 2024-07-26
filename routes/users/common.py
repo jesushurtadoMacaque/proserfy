@@ -40,7 +40,7 @@ async def create_users(user: UserCreate, db: db_dependency, response: Response):
     return {"access_token": access_token}
  
 @router.post("/login", tags=["users"], response_model=Token, responses=validation_error_response)
-async def login_for_access_token(db: db_dependency, form_data: LoginForm):
+async def login_for_access_token(db: db_dependency, form_data: LoginForm, response: Response):
     
     user = get_user_by_email(db, form_data.email)
         
@@ -53,7 +53,9 @@ async def login_for_access_token(db: db_dependency, form_data: LoginForm):
     access_token = create_access_token(data={"sub": user.email})
     refresh_token = create_refresh_token(data={"sub": user.email})
 
-    return {"access_token": access_token, "refresh_token": refresh_token,"token_type": "bearer"}
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+
+    return {"access_token": access_token}
     
 @router.get("/users/{id}", tags=["users"], response_model=UserResponse, responses=validation_error_response)
 async def read_user(id: int, db: db_dependency):
