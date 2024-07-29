@@ -8,7 +8,7 @@ from custom_exceptions.users_exceptions import GenericException
 import models.users as models
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from routes import user, professional_service
+from routes import user, professional_service, comment,rating,version
 import uvicorn
 import os
 import config
@@ -36,6 +36,9 @@ models.Base.metadata.create_all(bind=config.database.engine)
 
 app.include_router(user.router, prefix="/v1")
 app.include_router(professional_service.router, prefix="/v1")
+app.include_router(comment.router, prefix="/v1")
+app.include_router(rating.router, prefix="/v1")
+app.include_router(version.router, prefix="/v1")
 
 
 if __name__ == "__main__":

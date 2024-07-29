@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy import create_engine
@@ -73,6 +74,8 @@ def init_db():
     from models.categories import Category
     from models.subcategories import SubCategory
     from models.roles import Role
+    from models.version import Version
+    
     Base.metadata.create_all(bind=engine)
     
     db = SessionLocal()
@@ -83,6 +86,12 @@ def init_db():
             db.add(common_role)
             db.add(professional_role)
             db.commit()
+        
+        if db.query(Version).count() == 0:
+            first_version = Version( version="1.0.0", release_date=date.today())
+            db.add(first_version)
+            db.commit()
+
         for category_data in DEFAULT_CATEGORIES:
             category_name = category_data["name"]
             subcategories = category_data["subcategories"]
