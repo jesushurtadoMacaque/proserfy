@@ -74,7 +74,7 @@ def init_db():
     from models.categories import Category
     from models.subcategories import SubCategory
     from models.roles import Role
-    from models.version import Version
+    from models.versions import Version
     
     Base.metadata.create_all(bind=engine)
     

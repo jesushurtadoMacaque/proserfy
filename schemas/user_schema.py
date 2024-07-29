@@ -33,12 +33,16 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=255)
     receive_promotions: bool = False
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     role_id: int = Field(...)
 
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     receive_promotions: Optional[bool] = None
 
 class UserExternalCreate(UserBase):
@@ -55,6 +59,8 @@ class UserResponse(UserBase):
     google_id: Optional[str] = None
     is_active: bool
     role: RoleResponse
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
     class Config:
         from_attributes = True

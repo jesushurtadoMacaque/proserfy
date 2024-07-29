@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from config.database import db_dependency
 from custom_exceptions.users_exceptions import GenericException
-from models.version import Version
+from models.versions import Version
 
 router = APIRouter()
 

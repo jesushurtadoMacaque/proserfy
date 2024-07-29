@@ -26,6 +26,10 @@ async def update_user(user_update: UserUpdate, db: db_dependency, current_user: 
         current_user.last_name = user_update.last_name
     if user_update.receive_promotions is not None:
         current_user.receive_promotions = user_update.receive_promotions
+    if user_update.latitude: 
+        current_user.latitude = user_update.latitude
+    if user_update.longitude: 
+        current_user.longitude = user_update.longitude
     
     db.commit()
     db.refresh(current_user)

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from config.database import Base
 from models.professional_services import ProfessionalService
@@ -21,6 +21,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     birth_date = Column(Date, nullable=True)  
     role_id = Column(Integer, ForeignKey('roles.id'), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     role = relationship('Role', back_populates='users')
     professional_services = relationship('ProfessionalService', back_populates='professional')
