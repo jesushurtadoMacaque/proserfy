@@ -1,0 +1,5 @@
+{
+     // Configuración para black
+  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
+}

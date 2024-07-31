@@ -10,16 +10,26 @@ from utils.getters_handler import get_current_user, get_user_by_email
 
 router = APIRouter()
 
-@router.post("/comments", tags=["comments"], response_model=CommentResponse)
-async def create_comment(comment: CommentCreate, db: db_dependency, current_user:User = Depends(get_current_active_user)):
 
-    professional_service = db.query(ProfessionalService).filter(ProfessionalService.id == comment.professional_service_id).first()
+@router.post("/comments", tags=["comments"], response_model=CommentResponse)
+async def create_comment(
+    comment: CommentCreate,
+    db: db_dependency,
+    current_user: User = Depends(get_current_active_user),
+):
+
+    professional_service = (
+        db.query(ProfessionalService)
+        .filter(ProfessionalService.id == comment.professional_service_id)
+        .first()
+    )
     if not professional_service:
-        raise GenericException(message="Service not found", code=status.HTTP_404_NOT_FOUND)
-        
+        raise GenericException(
+            message="Service not found", code=status.HTTP_404_NOT_FOUND
+        )
+
     db_comment = Comment(**comment.model_dump(), user_id=current_user.id)
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
     return db_comment
-    

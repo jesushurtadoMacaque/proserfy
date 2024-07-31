@@ -10,26 +10,48 @@ from utils.getters_handler import get_user_by_email
 
 router = APIRouter()
 
+
 @router.post("/ratings", tags=["ratings"], response_model=RatingResponse)
-async def create_rating(rating: RatingCreate, db: db_dependency, current_user:User = Depends(get_current_active_user)):
+async def create_rating(
+    rating: RatingCreate,
+    db: db_dependency,
+    current_user: User = Depends(get_current_active_user),
+):
 
-    professional_service = db.query(ProfessionalService).filter(ProfessionalService.id == rating.professional_service_id).first()
+    professional_service = (
+        db.query(ProfessionalService)
+        .filter(ProfessionalService.id == rating.professional_service_id)
+        .first()
+    )
     if not professional_service:
-        raise GenericException(message="Service not found", code=status.HTTP_404_NOT_FOUND)
+        raise GenericException(
+            message="Service not found", code=status.HTTP_404_NOT_FOUND
+        )
 
-    existing_rating = db.query(Rating).filter(
-        Rating.user_id == current_user.id,
-        Rating.professional_service_id == rating.professional_service_id
-    ).first()
+    existing_rating = (
+        db.query(Rating)
+        .filter(
+            Rating.user_id == current_user.id,
+            Rating.professional_service_id == rating.professional_service_id,
+        )
+        .first()
+    )
 
     if existing_rating:
-        raise GenericException(message="You have already rated this service", code=status.HTTP_400_BAD_REQUEST)
+        raise GenericException(
+            message="You have already rated this service",
+            code=status.HTTP_400_BAD_REQUEST,
+        )
 
     db_rating = Rating(**rating.model_dump(), user_id=current_user.id)
     db.add(db_rating)
     db.commit()
 
-    ratings = db.query(Rating).filter(Rating.professional_service_id == rating.professional_service_id).all()
+    ratings = (
+        db.query(Rating)
+        .filter(Rating.professional_service_id == rating.professional_service_id)
+        .all()
+    )
     average_rating = sum(r.rating for r in ratings) / len(ratings)
 
     professional_service.average_rating = average_rating
@@ -37,4 +59,3 @@ async def create_rating(rating: RatingCreate, db: db_dependency, current_user:Us
 
     db.refresh(db_rating)
     return db_rating
-    

@@ -6,7 +6,3 @@ router = APIRouter()
 
 router.include_router(common.router)
 router.include_router(protected.router)
-
-
-
-    
