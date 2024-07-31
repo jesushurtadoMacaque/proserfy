@@ -5,7 +5,6 @@ from models.versions import Version
 
 router = APIRouter()
 
-
 @router.get("/version", tags=["versions"])
 def get_latest_version(db: db_dependency):
     version = db.query(Version).order_by(Version.release_date.desc()).first()

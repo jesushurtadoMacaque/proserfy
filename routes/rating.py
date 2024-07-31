@@ -6,10 +6,8 @@ from models.users import User
 from routes.professional_services.protected import get_current_active_user
 from schemas.profesional_service_schema import RatingCreate, RatingResponse
 from config.database import db_dependency
-from utils.getters_handler import get_user_by_email
 
 router = APIRouter()
-
 
 @router.post("/ratings", tags=["ratings"], response_model=RatingResponse)
 async def create_rating(

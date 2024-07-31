@@ -5,10 +5,8 @@ class SubscriptionTypeBase(BaseModel):
     name: str
     price: float
 
-
 class SubscriptionTypeCreate(SubscriptionTypeBase):
     pass
-
 
 class SubscriptionTypeResponse(SubscriptionTypeBase):
     id: int
@@ -16,15 +14,12 @@ class SubscriptionTypeResponse(SubscriptionTypeBase):
     class Config:
         from_attributes = True
 
-
 class SubscriptionBase(BaseModel):
     start_date: datetime
     end_date: datetime
 
-
 class SubscriptionCreate(BaseModel):
     subscription_type_id: int
-
 
 class SubscriptionResponse(SubscriptionBase):
     id: int

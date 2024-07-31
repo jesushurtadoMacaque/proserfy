@@ -16,7 +16,6 @@ from utils.password_handler import verify_password, hash_password
 
 router = APIRouter()
 
-
 async def get_current_active_user(
     request: Request, db: db_dependency, current_user: str = Depends(get_current_user)
 ):

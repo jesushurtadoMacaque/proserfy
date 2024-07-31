@@ -20,7 +20,6 @@ from utils.password_handler import verify_password, hash_password
 
 router = APIRouter()
 
-
 @router.post(
     "/register",
     tags=["users"],
