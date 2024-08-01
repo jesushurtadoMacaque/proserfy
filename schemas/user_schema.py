@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from datetime import date
 from typing import Optional
-from schemas.subscription_schema import SubscriptionResponse
+from schemas.subscription_schema import SubscriptionBoughtHistoryBase, SubscriptionResponse, SubscriptionTypeResponse
 
 class RoleBase(BaseModel):
     name: str
@@ -65,6 +65,10 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+class SubscriptionBoughtHistoryResponse(SubscriptionBoughtHistoryBase):
+    user: UserResponse
+    subscription_type: SubscriptionTypeResponse
 
 class LoginForm(BaseModel):
     email: EmailStr

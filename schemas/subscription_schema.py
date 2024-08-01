@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class SubscriptionTypeBase(BaseModel):
     name: str
     price: float
@@ -11,6 +12,13 @@ class SubscriptionTypeCreate(SubscriptionTypeBase):
 class SubscriptionTypeResponse(SubscriptionTypeBase):
     id: int
 
+    class Config:
+        from_attributes = True
+
+class SubscriptionBoughtHistoryBase(BaseModel):
+    user_id: int
+    subscription_type_id: int
+    
     class Config:
         from_attributes = True
 

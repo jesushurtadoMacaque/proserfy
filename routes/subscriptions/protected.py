@@ -38,6 +38,12 @@ def adding_user_sub(
             code=status.HTTP_400_BAD_REQUEST, message="User already has an active subscription"
         )
 
+    # Adding to the history
+    db_new_sub_added = subscriptions.SubscriptionBoughtHistory(
+        user_id=current_user.id,
+        subscription_type_id=request.subscription_type_id
+    )
+    db.add(db_new_sub_added)
     # Si hay una suscripción inactiva, actualizar fechas
     if user_subscription and user_subscription.end_date <= current_date:
         user_subscription.start_date = current_date

@@ -25,3 +25,13 @@ class Subscription(Base):
 
     users = relationship("User", back_populates="subscription")
     subscription_type = relationship("SubscriptionType")
+
+class SubscriptionBoughtHistory(Base):
+    __tablename__ = "subscription_bought_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    subscription_type_id = Column(Integer, ForeignKey("subscription_types.id"), nullable=False)
+
+    user = relationship("User")
+    subscription_type = relationship("SubscriptionType")
