@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from config.files import UPLOAD_DIRECTORY_SERVICES
 from custom_exceptions.users_exceptions import GenericException
-from models.professional_services import ProfessionalService
+from models.professional_services import ProfessionalService, WorkSchedule
 from models.service_images import ServiceImage
 from models.subcategories import SubCategory
 from models.users import User
@@ -62,11 +62,38 @@ async def create_professional_service(
             message="Subcategory not found", code=status.HTTP_404_NOT_FOUND
         )
 
-    db_service = ProfessionalService(
-        **service.model_dump(), professional_id=current_user.id
-    )
-    db.add(db_service)
-    db.commit()
+    try:
+        db_service = ProfessionalService(
+            name=service.name,
+            description=service.description,
+            range_from= service.range_from,
+            range_to= service.range_to,
+            city=service.city,
+            latitude=service.latitude,
+            longitude=service.longitude,
+            subcategory_id=service.subcategory_id,
+            professional_id=current_user.id
+        )
+        db.add(db_service)
+        db.commit()
+        db.refresh(db_service)
+
+        # Crear los WorkSchedules
+        for schedule in service.work_schedules:
+            db_schedule = WorkSchedule(
+                day_of_week=schedule.day_of_week,
+                start_time=schedule.start_time,
+                end_time=schedule.end_time,
+                is_active=schedule.is_active,
+                professional_service_id=db_service.id
+            )
+            db.add(db_schedule)
+        
+        db.commit()
+    except:
+        db.rollback()
+        raise
+
     db.refresh(db_service)
     return db_service
 
