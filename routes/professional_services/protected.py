@@ -1,7 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
-from fastapi.responses import JSONResponse
-from config.files import UPLOAD_DIRECTORY
+from config.files import UPLOAD_DIRECTORY_SERVICES
 from custom_exceptions.users_exceptions import GenericException
 from models.professional_services import ProfessionalService
 from models.service_images import ServiceImage
@@ -18,6 +17,8 @@ from utils.getters_handler import get_current_user, get_user_by_email
 from PIL import Image
 import aiofiles
 import os
+
+from utils.images_handler import save_images, validate_images
 
 router = APIRouter()
 
@@ -111,40 +112,16 @@ async def upload_images(
             code=status.HTTP_400_BAD_REQUEST,
         )
 
-    error_messages = []
-    valid_files = []
 
-    for file in files:
-        if file.size > 5 * 1024 * 1024:
-            error_messages.append(f"File {file.filename} exceeds 5MB limit")
-            continue
+    valid_files, error_messages = validate_images(files)
+    uploaded_files = await save_images(service_id, valid_files, directory="services")
 
-        try:
-            image = Image.open(file.file)
-            image.verify()
-            file.file.seek(0)
-            valid_files.append(file)
-        except (IOError, Image.UnidentifiedImageError):
-            error_messages.append(f"File {file.filename} is not a valid image")
-            continue
-
-    uploaded_files = []
-    for file in valid_files:
-        unique_filename = f"{service_id}_{uuid.uuid4()}_{file.filename}"
-        file_location = os.path.join(UPLOAD_DIRECTORY, unique_filename)
-
-        async with aiofiles.open(file_location, "wb") as out_file:
-            content = await file.read()
-            await out_file.write(content)
-
-        image_url = f"/uploaded_images/services/{unique_filename}"
-
+    for file_name in uploaded_files:
+        image_url = f"/uploaded_images/services/{file_name}"
         service_image = ServiceImage(url=image_url, service_id=service_id)
         db.add(service_image)
         db.commit()
         db.refresh(service_image)
-
-        uploaded_files.append(unique_filename)
 
     response = ImageUpdatedResponse(
         detail="Images uploaded successfully",
@@ -181,7 +158,7 @@ async def delete_image(
             code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    image_path = os.path.join(UPLOAD_DIRECTORY, os.path.basename(service_image.url))
+    image_path = os.path.join(UPLOAD_DIRECTORY_SERVICES, os.path.basename(service_image.url))
     if os.path.exists(image_path):
         os.remove(image_path)
 

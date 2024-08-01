@@ -32,8 +32,13 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 app.mount(
     "/uploaded_images/services",
-    StaticFiles(directory=config.files.UPLOAD_DIRECTORY),
-    name="uploaded_images",
+    StaticFiles(directory=config.files.UPLOAD_DIRECTORY_SERVICES),
+    name="uploaded_images_services",
+)
+app.mount(
+    "/uploaded_images/profiles",
+    StaticFiles(directory=config.files.UPLOAD_DIRECTORY_PROFILES),
+    name="uploaded_images_profiles",
 )
 
 

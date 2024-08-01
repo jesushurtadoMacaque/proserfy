@@ -14,9 +14,8 @@ class ProfessionalService(Base):
     longitude = Column(Float, nullable=False)
     average_rating = Column(Float, default=0.0)
     professional_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-
     subcategory_id = Column(Integer, ForeignKey("subcategories.id"), nullable=False)
-
+    
     professional = relationship("User", back_populates="professional_services")
     subcategory = relationship("SubCategory", back_populates="professional_services")
     comments = relationship("Comment", back_populates="professional_service")

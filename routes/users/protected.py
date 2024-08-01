@@ -1,6 +1,11 @@
-from fastapi import APIRouter, Depends, Request, status
+import os
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
+from config.files import UPLOAD_DIRECTORY_PROFILES
 from custom_exceptions.users_exceptions import GenericException
+from custom_exceptions.users_exceptions import GenericException
+from models.profile_images import ProfileImage
 from models.users import User
+from schemas.profesional_service_schema import ImageUpdatedResponse
 from schemas.user_schema import (
     ChangePasswordRequest,
     CompleteProfile,
@@ -12,6 +17,7 @@ from schemas.user_schema import (
 from config.database import db_dependency
 from utils.error_handler import validation_error_response
 from utils.getters_handler import get_current_user, get_role_by_id, get_user_by_email
+from utils.images_handler import save_images, validate_images
 from utils.password_handler import verify_password, hash_password
 
 router = APIRouter()
@@ -162,3 +168,49 @@ async def complete_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+@router.post(
+    "/upload-profile-image",
+    tags=["user_profile"],
+    response_model=ImageUpdatedResponse,
+)
+async def upload_profile_image(
+    db: db_dependency,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+):
+    valid_files, error_messages = validate_images([file])
+    if not valid_files:
+        raise GenericException(
+            message="No valid images to upload.",
+            code=status.HTTP_400_BAD_REQUEST,
+        )
+    profile_image = db.query(ProfileImage).filter(ProfileImage.user_id == current_user.id).first()
+    if profile_image:
+        old_image_path = os.path.join(profile_image.url.strip("/"))
+        if os.path.exists(old_image_path):
+            os.remove(old_image_path)
+        
+        # Delete the old profile image record from the database
+        db.delete(profile_image)
+        db.commit()
+    
+   
+
+    uploaded_files = await save_images(current_user.id, valid_files, directory="profiles")
+
+    profile_image_url = f"/{UPLOAD_DIRECTORY_PROFILES}/{uploaded_files[0]}"
+    profile_image = ProfileImage(
+        url=profile_image_url,
+        user_id=current_user.id
+    )
+    db.add(profile_image)
+    db.commit()
+
+    response = ImageUpdatedResponse(
+        detail="Profile image uploaded successfully",
+        uploaded_files=uploaded_files,
+        errors=error_messages,
+    )
+
+    return response

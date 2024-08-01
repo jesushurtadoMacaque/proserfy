@@ -25,6 +25,18 @@ class CompleteProfile(BaseModel):
 class SuspendUserRequest(BaseModel):
     is_active: bool
 
+class ProfileImageBase(BaseModel):
+    url: str
+
+class ProfileImageCreate(ProfileImageBase):
+    user_id: int
+
+class ProfileImageResponse(ProfileImageBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 class UserBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
@@ -60,6 +72,7 @@ class UserResponse(UserBase):
     is_active: bool
     role: RoleResponse
     subscription: Optional[SubscriptionResponse]
+    profile_image: Optional[ProfileImageResponse]
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 

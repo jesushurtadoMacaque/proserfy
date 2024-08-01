@@ -6,6 +6,7 @@ from models.roles import Role
 from models.comments import Comment
 from models.subscriptions import Subscription
 from models.ratings import Rating
+from models.profile_images import ProfileImage 
 
 
 class User(Base):
@@ -26,10 +27,9 @@ class User(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
+    profile_image = relationship("ProfileImage", back_populates="user", uselist=False)
     role = relationship("Role", back_populates="users")
     subscription = relationship("Subscription", back_populates="users", uselist=False)
-    professional_services = relationship(
-        "ProfessionalService", back_populates="professional"
-    )
+    professional_services = relationship("ProfessionalService", back_populates="professional")
     comments = relationship("Comment", back_populates="user")
     ratings = relationship("Rating", back_populates="user")
